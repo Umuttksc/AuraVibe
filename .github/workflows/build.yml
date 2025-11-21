@@ -1,0 +1,22 @@
+name: Build Android AAB
+
+on:
+  push:
+    branches:
+      - main   # veya senin ana branch'in adı
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
