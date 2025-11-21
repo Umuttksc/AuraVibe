@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    
+    <!-- Mobile & WebView Optimizations -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Android WebView Specific -->
+    <meta name="theme-color" content="#8b5cf6" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#8b5cf6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#6d28d9" />
+    
+    <!-- App Information -->
+    <title>AuraVibe - Sosyal Medya Platformu</title>
+    <meta name="application-name" content="AuraVibe" />
+    <meta name="description" content="Gönderi paylaş, hikayeler oluştur, arkadaşlarınla mesajlaş. Wellness takibi, fal bakımı, İslami içerikler ve daha fazlası." />
+    <meta name="keywords" content="sosyal medya, hikaye, gönderi, mesajlaşma, wellness, fal, İslam, regl takibi, namaz vakitleri" />
+    <meta name="author" content="AuraVibe" />
+    
+    <!-- Icons -->
+    <link rel="icon" href="https://cdn.hercules.app/file_hPTRc4wDpg7d0naHc3NG1ZFe" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
+    
+    <!-- Social Media Meta Tags -->
+    <meta property="og:title" content="AuraVibe - Sosyal Medya Platformu" />
+    <meta property="og:description" content="Gönderi paylaş, hikayeler oluştur, arkadaşlarınla mesajlaş. Yeni nesil sosyal medya deneyimi." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:locale" content="tr_TR" />
+    
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/icon.png" />
+    <meta name="twitter:site" content="@AuraVibe" />
+    <meta name="twitter:creator" content="@AuraVibe" />
+
+    <!-- Detect dark mode preference and set the class before next-themes loads. This avoids a flash of unstyled content (FOUC) when the page loads. -->
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (theme === "system" || !theme) {
+            var prefersDark = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches;
+            theme = prefersDark ? "dark" : "light";
+          }
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
+    <link href="/src/index.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
