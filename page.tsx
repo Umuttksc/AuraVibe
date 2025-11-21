@@ -1,240 +1,245 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import MainLayout from "@/components/layout/main-layout.tsx";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { SignInButton } from "@/components/ui/signin.tsx";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
-import { Progress } from "@/components/ui/progress.tsx";
+import MainLayout from "@/components/layout/main-layout.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
-import { Trophy, Users, Heart, MessageSquare, Book, Sparkles, Star, Lock } from "lucide-react";
-import { cn } from "@/lib/utils.ts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Users, FileText, MessageSquare, TrendingUp, Shield, Activity, Download, Settings } from "lucide-react";
+import UsersManagement from "./_components/users-management.tsx";
+import ActivityFeed from "./_components/activity-feed.tsx";
+import AdsManagement from "./_components/ads-management.tsx";
+import DataExport from "./_components/data-export.tsx";
+import SystemManagement from "./_components/system-management.tsx";
 
-const categoryIcons = {
-  social: Users,
-  engagement: Heart,
-  community: MessageSquare,
-  wellness: Book,
-  special: Star,
-};
+export default function AdminPage() {
+  const isAdmin = useQuery(api.admin.isAdmin);
+  const isSuperAdmin = useQuery(api.admin.isSuperAdmin);
+  const stats = useQuery(api.admin.getStats, isAdmin === true ? {} : "skip");
+  const navigate = useNavigate();
 
-const categoryLabels = {
-  social: "Sosyal",
-  engagement: "Etkileşim",
-  community: "Topluluk",
-  wellness: "Wellness",
-  special: "Özel",
-};
+  useEffect(() => {
+    if (isAdmin === false) {
+      navigate("/admin/setup");
+    }
+  }, [isAdmin, navigate]);
 
-export default function AchievementsPage() {
-  return (
-    <MainLayout>
-      <div className="min-h-screen bg-background">
-        <Authenticated>
-          <AchievementsContent />
-        </Authenticated>
-        <Unauthenticated>
-          <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
-            <Trophy className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Başarılarını Keşfet</h2>
-            <p className="text-muted-foreground mb-6 text-center">
-              Başarılarını görmek ve ödüller kazanmak için giriş yap
-            </p>
-            <SignInButton />
-          </div>
-        </Unauthenticated>
-        <AuthLoading>
-          <div className="container mx-auto px-4 py-6 max-w-4xl">
-            <Skeleton className="h-10 w-64 mb-6" />
-            <div className="grid gap-4">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
-              ))}
-            </div>
-          </div>
-        </AuthLoading>
-      </div>
-    </MainLayout>
-  );
-}
-
-function AchievementsContent() {
-  const achievements = useQuery(api.achievements.getUserAchievements);
-
-  if (!achievements) {
+  if (isAdmin === undefined) {
     return (
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
-        <Skeleton className="h-10 w-64 mb-6" />
-        <div className="grid gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Skeleton className="h-20 w-20 rounded-full" />
       </div>
     );
   }
 
-  const unlockedCount = achievements.filter(a => a.isUnlocked).length;
-  const totalCount = achievements.length;
-  const percentage = Math.round((unlockedCount / totalCount) * 100);
-
-  // Group by category
-  const grouped = achievements.reduce((acc, achievement) => {
-    if (!acc[achievement.category]) {
-      acc[achievement.category] = [];
-    }
-    acc[achievement.category].push(achievement);
-    return acc;
-  }, {} as Record<string, typeof achievements>);
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl md:ml-64">
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Başarılar</h1>
+    <MainLayout>
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-6xl">
+        <div className="space-y-6 mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
+          </div>
+          
+          {/* Admin Actions Grid - 3 columns */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => navigate("/admin/verification")}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-xs sm:text-sm"
+            >
+              Başvurular
+            </button>
+            <button
+              onClick={() => navigate("/admin/fortune-settings")}
+              className="px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors text-xs sm:text-sm"
+            >
+              ☕🔮 Fal
+            </button>
+            <button
+              onClick={() => navigate("/admin/fortune-analytics")}
+              className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-xs sm:text-sm"
+            >
+              📊 Fal İstatistik
+            </button>
+            <button
+              onClick={() => navigate("/admin/premium-settings")}
+              className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs sm:text-sm"
+            >
+              ⭐ Premium
+            </button>
+            <button
+              onClick={() => navigate("/admin/gifts")}
+              className="px-3 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 transition-colors text-xs sm:text-sm"
+            >
+              🎁 Hediyeler
+            </button>
+            <button
+              onClick={() => navigate("/admin/gift-settings")}
+              className="px-3 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 transition-colors text-xs sm:text-sm"
+            >
+              💰 Gelir
+            </button>
+            <button
+              onClick={() => navigate("/admin/wallet-settings")}
+              className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
+            >
+              💳 Cüzdan
+            </button>
+            <button
+              onClick={() => navigate("/admin/token-settings")}
+              className="px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors text-xs sm:text-sm"
+            >
+              🎟️ Jetonlar
+            </button>
+            <button
+              onClick={() => navigate("/admin/permissions")}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-xs sm:text-sm"
+            >
+              🛡️ Yetkiler
+            </button>
+            <button
+              onClick={() => navigate("/admin/content-moderation")}
+              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs sm:text-sm"
+            >
+              🚫 Moderasyon
+            </button>
+            <button
+              onClick={() => navigate("/admin/settings")}
+              className="px-3 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-xs sm:text-sm"
+            >
+              ⚙️ Doğrulama
+            </button>
+            <button
+              onClick={() => navigate("/admin/reports")}
+              className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs sm:text-sm"
+            >
+              📋 Raporlar
+            </button>
+          </div>
         </div>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Tamamlanan Başarılar</span>
-              <span className="text-sm font-semibold">{unlockedCount}/{totalCount}</span>
-            </div>
-            <Progress value={percentage} className="h-2" />
-            <div className="text-xs text-muted-foreground mt-2 text-center">%{percentage} Tamamlandı</div>
-          </CardContent>
-        </Card>
-      </div>
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 mb-6">
-          <TabsTrigger value="all">Tümü</TabsTrigger>
-          <TabsTrigger value="social">
-            <Users className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="engagement">
-            <Heart className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="community">
-            <MessageSquare className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="wellness">
-            <Book className="h-4 w-4" />
-          </TabsTrigger>
-          <TabsTrigger value="special">
-            <Star className="h-4 w-4" />
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-4">
-          {Object.entries(grouped).map(([category, items]) => (
-            <div key={category}>
-              <div className="flex items-center gap-2 mb-3">
-                {(() => {
-                  const Icon = categoryIcons[category as keyof typeof categoryIcons];
-                  return <Icon className="h-5 w-5 text-primary" />;
-                })()}
-                <h2 className="text-xl font-semibold">{categoryLabels[category as keyof typeof categoryLabels]}</h2>
-              </div>
-              <div className="grid gap-3">
-                {items.map((achievement) => (
-                  <AchievementCard key={achievement.id} achievement={achievement} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </TabsContent>
-
-        {Object.keys(grouped).map((category) => (
-          <TabsContent key={category} value={category} className="space-y-3">
-            {grouped[category].map((achievement) => (
-              <AchievementCard key={achievement.id} achievement={achievement} />
-            ))}
-          </TabsContent>
-        ))}
-      </Tabs>
-    </div>
-  );
-}
-
-interface AchievementCardProps {
-  achievement: {
-    id: string;
-    title: string;
-    description: string;
-    icon: string;
-    category: string;
-    requirement: number;
-    reward: { type: "none" | "tokens"; amount?: number };
-    isUnlocked: boolean;
-    progress: number;
-    unlockedAt?: number;
-  };
-}
-
-function AchievementCard({ achievement }: AchievementCardProps) {
-  const progressPercentage = Math.min((achievement.progress / achievement.requirement) * 100, 100);
-
-  return (
-    <Card className={cn(
-      "transition-all hover:shadow-md",
-      achievement.isUnlocked ? "border-primary/50 bg-primary/5" : "opacity-70"
-    )}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              "text-4xl flex-shrink-0",
-              !achievement.isUnlocked && "grayscale opacity-50"
-            )}>
-              {achievement.isUnlocked ? achievement.icon : <Lock className="h-10 w-10 text-muted-foreground" />}
-            </div>
-            <div>
-              <CardTitle className="text-lg mb-1 flex items-center gap-2">
-                {achievement.title}
-                {achievement.isUnlocked && (
-                  <Badge variant="default" className="text-xs">
-                    Kazanıldı
-                  </Badge>
-                )}
+        {/* Stats Overview */}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Kullanıcı
               </CardTitle>
-              <p className="text-sm text-muted-foreground">{achievement.description}</p>
-            </div>
-          </div>
-          {achievement.reward.type === "tokens" && (
-            <Badge variant="secondary" className="flex items-center gap-1 flex-shrink-0">
-              <Sparkles className="h-3 w-3" />
-              {achievement.reward.amount} Jeton
-            </Badge>
-          )}
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">{stats?.totalUsers ?? 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                +{stats?.newUsersThisWeek ?? 0} hafta
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Gönderi
+              </CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">{stats?.totalPosts ?? 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                +{stats?.newPostsThisWeek ?? 0} hafta
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Mesaj
+              </CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">{stats?.totalMessages ?? 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats?.totalConversations ?? 0} konuşma
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Aktif
+              </CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
+                {stats?.activeUsers ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats?.blockedUsers ?? 0} engelli
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </CardHeader>
-      {!achievement.isUnlocked && (
-        <CardContent className="pt-0">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">İlerleme</span>
-              <span className="font-semibold">
-                {achievement.progress}/{achievement.requirement}
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
+
+        {/* Tabs */}
+        <Tabs defaultValue="users" className="space-y-4">
+          <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <TabsList className="inline-flex min-w-full w-auto h-auto flex-nowrap gap-1 p-1">
+              <TabsTrigger value="users" className="text-xs sm:text-sm whitespace-nowrap">
+                Kullanıcılar
+              </TabsTrigger>
+              {isSuperAdmin && (
+                <TabsTrigger value="export" className="text-xs sm:text-sm whitespace-nowrap">
+                  Veri Çıktısı
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="ads" className="text-xs sm:text-sm whitespace-nowrap">
+                Reklamlar
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm whitespace-nowrap">
+                Aktiviteler
+              </TabsTrigger>
+              {isSuperAdmin && (
+                <TabsTrigger value="system" className="text-xs sm:text-sm whitespace-nowrap flex items-center gap-1">
+                  <Settings className="h-4 w-4" />
+                  Sistem
+                </TabsTrigger>
+              )}
+            </TabsList>
           </div>
-        </CardContent>
-      )}
-      {achievement.isUnlocked && achievement.unlockedAt && (
-        <CardContent className="pt-0">
-          <div className="text-xs text-muted-foreground">
-            🎉 {new Date(achievement.unlockedAt).toLocaleDateString("tr-TR", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })} tarihinde kazanıldı
-          </div>
-        </CardContent>
-      )}
-    </Card>
+
+          <TabsContent value="users">
+            <UsersManagement />
+          </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="export">
+              <DataExport />
+            </TabsContent>
+          )}
+
+          <TabsContent value="ads">
+            <AdsManagement />
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <ActivityFeed />
+          </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="system">
+              <SystemManagement />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
+    </MainLayout>
   );
 }
