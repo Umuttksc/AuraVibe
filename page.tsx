@@ -1,464 +1,391 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
-import type { Id } from "@/convex/_generated/dataModel.d.ts";
-import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import AppLayout from "@/components/layout/AppLayout.tsx";
-import { Card } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
-import { User, CheckCircle, MessageSquare, UserCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Card } from "@/components/ui/card.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { 
+  Cloud, 
+  CloudRain, 
+  Sun, 
+  Wind, 
+  Droplets, 
+  Eye, 
+  Gauge,
+  MapPin,
+  Loader2,
+  Sunrise as SunriseIcon,
+  Sunset as SunsetIcon
+} from "lucide-react";
 import { toast } from "sonner";
-import { ConvexError } from "convex/values";
-import { useAuth } from "@/hooks/use-auth.ts";
-import { useNavigate } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.tsx";
+import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { SignInButton } from "@/components/ui/signin.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
-function UserIcon({ className }: { className?: string }) {
-  return <User className={className} />;
+interface WeatherData {
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  description: string;
+  icon: string;
+  windSpeed: number;
+  city: string;
+  country: string;
+  pressure: number;
+  visibility: number;
 }
 
-function CheckCircleIcon({ className }: { className?: string }) {
-  return <CheckCircle className={className} />;
+interface PrayerTimesData {
+  date: string;
+  hijriDate: string;
+  timings: {
+    fajr: string;
+    dhuhr: string;
+    asr: string;
+    maghrib: string;
+    isha: string;
+    sunrise: string;
+  };
+  city: string;
+  country: string;
 }
 
-function MessageSquareIcon({ className }: { className?: string }) {
-  return <MessageSquare className={className} />;
-}
+function WeatherContent() {
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("Turkey");
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTimesData | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [isLoadingPrayer, setIsLoadingPrayer] = useState(false);
 
-function UserCircleIcon({ className }: { className?: string }) {
-  return <UserCircle className={className} />;
-}
+  const getCurrentWeather = useAction(api.weather.getCurrentWeather);
+  const getPrayerTimes = useAction(api.prayer.getPrayerTimes);
 
-function IslamicChatContent() {
-  const [newQuestion, setNewQuestion] = useState("");
-  const [expandedDiscussion, setExpandedDiscussion] = useState<Id<"islamicDiscussions"> | null>(null);
-  const [replyContent, setReplyContent] = useState("");
-
-  const navigate = useNavigate();
-  const currentUser = useQuery(api.users.getCurrentUser);
-
-  const discussions = useQuery(api.islamicDiscussions.getDiscussions, { limit: 50 });
-  const replies = useQuery(
-    api.islamicDiscussions.getReplies,
-    expandedDiscussion ? { discussionId: expandedDiscussion } : "skip"
-  );
-
-  const createDiscussion = useMutation(api.islamicDiscussions.createDiscussion);
-  const createReply = useMutation(api.islamicDiscussions.createReply);
-  const toggleLike = useMutation(api.islamicDiscussions.toggleLike);
-  const deleteDiscussion = useMutation(api.islamicDiscussions.deleteDiscussion);
-  const deleteReply = useMutation(api.islamicDiscussions.deleteReply);
-  const getOrCreateConversation = useMutation(api.messages.getOrCreateConversation);
-
-  const handleCreateDiscussion = async () => {
-    if (!newQuestion.trim()) {
-      toast.error("Lütfen bir soru yazın");
+  const handleWeatherSearch = async () => {
+    if (!city.trim()) {
+      toast.error("Lütfen bir şehir adı girin");
       return;
     }
 
+    setIsLoadingWeather(true);
     try {
-      await createDiscussion({ question: newQuestion });
-      setNewQuestion("");
-      toast.success("Sorunuz paylaşıldı");
+      const data = await getCurrentWeather({ city: city.trim(), units: "metric" });
+      setWeather(data);
+      toast.success("Hava durumu güncellendi");
     } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Bir hata oluştu");
-      }
+      toast.error("Hava durumu alınamadı");
+      console.error(error);
+    } finally {
+      setIsLoadingWeather(false);
     }
   };
 
-  const handleCreateReply = async () => {
-    if (!replyContent.trim() || !expandedDiscussion) return;
+  const handlePrayerSearch = async () => {
+    if (!city.trim()) {
+      toast.error("Lütfen bir şehir adı girin");
+      return;
+    }
 
+    setIsLoadingPrayer(true);
     try {
-      await createReply({
-        discussionId: expandedDiscussion,
-        content: replyContent,
+      const data = await getPrayerTimes({ 
+        city: city.trim(), 
+        country: country.trim() 
       });
-      setReplyContent("");
-      toast.success("Cevabınız gönderildi");
+      setPrayerTimes(data);
+      toast.success("Ezan vakitleri güncellendi");
     } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Bir hata oluştu");
-      }
+      toast.error("Ezan vakitleri alınamadı");
+      console.error(error);
+    } finally {
+      setIsLoadingPrayer(false);
     }
   };
 
-  const handleToggleLike = async (discussionId?: Id<"islamicDiscussions">, replyId?: Id<"islamicDiscussionReplies">) => {
-    try {
-      await toggleLike({ discussionId, replyId });
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      }
-    }
-  };
-
-  const handleDeleteDiscussion = async (discussionId: Id<"islamicDiscussions">) => {
-    if (!confirm("Bu soruyu silmek istediğinizden emin misiniz? Tüm cevaplar da silinecektir.")) {
+  const handleSearchBoth = async () => {
+    if (!city.trim()) {
+      toast.error("Lütfen bir şehir adı girin");
       return;
     }
 
-    try {
-      await deleteDiscussion({ discussionId });
-      toast.success("Soru silindi");
-      if (expandedDiscussion === discussionId) {
-        setExpandedDiscussion(null);
-      }
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Bir hata oluştu");
-      }
-    }
-  };
-
-  const handleDeleteReply = async (replyId: Id<"islamicDiscussionReplies">) => {
-    if (!confirm("Bu cevabı silmek istediğinizden emin misiniz?")) {
-      return;
-    }
-
-    try {
-      await deleteReply({ replyId });
-      toast.success("Cevap silindi");
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Bir hata oluştu");
-      }
-    }
-  };
-
-  const handleSendMessage = async (otherUserId: Id<"users">) => {
-    try {
-      await getOrCreateConversation({ otherUserId });
-      toast.success("Mesajlar sayfasına yönlendiriliyorsunuz...");
-      navigate("/messages");
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        const { message } = error.data as { code: string; message: string };
-        toast.error(message);
-      } else {
-        toast.error("Bir hata oluştu");
-      }
-    }
+    await Promise.all([handleWeatherSearch(), handlePrayerSearch()]);
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-      {/* Header with Back Button */}
-      <div className="space-y-2">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/wellness")}
-          className="mb-2"
-        >
-          ← Geri
-        </Button>
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-4xl">💬</span>
-            <h1 className="text-3xl font-bold">İslami Sohbet</h1>
+    <div className="container mx-auto max-w-4xl p-4 space-y-6">
+      <div className="flex flex-col gap-4">
+        <h1 className="text-3xl font-bold">Hava Durumu ve Ezan Vakitleri</h1>
+        
+        <Card className="p-4">
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Şehir adı (örn: Istanbul)"
+                  onKeyDown={(e) => e.key === "Enter" && handleSearchBoth()}
+                />
+              </div>
+              <div className="w-40">
+                <Input
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="Ülke"
+                  onKeyDown={(e) => e.key === "Enter" && handleSearchBoth()}
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={handleSearchBoth} 
+              className="w-full"
+              disabled={isLoadingWeather || isLoadingPrayer}
+            >
+              {(isLoadingWeather || isLoadingPrayer) ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Yükleniyor...
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Ara
+                </>
+              )}
+            </Button>
           </div>
-          <p className="text-muted-foreground">
-            İslam dini, ibadetler ve ahlak ile ilgili sorularınızı sorun, cevaplar alın
-          </p>
-        </div>
+        </Card>
       </div>
 
-      {/* Yeni Soru Formu */}
-      <Card className="p-6 bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 border-purple-200 dark:border-purple-900">
-        <div className="space-y-4">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <span>✍️</span>
-            Soru Sorun
-          </h2>
-          <Textarea
-            placeholder="İslam dini, ibadetler, ahlak ile ilgili sorularınızı sorun..."
-            value={newQuestion}
-            onChange={(e) => setNewQuestion(e.target.value)}
-            rows={4}
-            className="resize-none"
-          />
-          <Button onClick={handleCreateDiscussion} className="w-full" size="lg">
-            <span className="mr-2">📨</span>
-            Soruyu Paylaş
-          </Button>
-        </div>
-      </Card>
+      <Tabs defaultValue="weather" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="weather">Hava Durumu</TabsTrigger>
+          <TabsTrigger value="prayer">Ezan Vakitleri</TabsTrigger>
+        </TabsList>
 
-      {/* Sorular Listesi */}
-      <div className="space-y-4">
-        <h2 className="font-semibold text-xl flex items-center gap-2">
-          <span>📋</span>
-          Sorular ve Cevaplar
-        </h2>
-
-        {discussions === undefined ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
-            ))}
-          </div>
-        ) : discussions.length === 0 ? (
-          <Card className="p-12 text-center">
-            <span className="text-6xl block mb-4">💭</span>
-            <h3 className="font-semibold text-lg mb-2">Henüz soru yok</h3>
-            <p className="text-sm text-muted-foreground">
-              İlk soruyu siz sorun ve toplulukla paylaşın!
-            </p>
-          </Card>
-        ) : (
-          discussions.map((discussion) => {
-            const isOwner = currentUser && discussion.user?._id === currentUser._id;
-            
-            return (
-              <Card
-                key={discussion._id}
-                className="p-6 space-y-4 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-10 w-10">
-                    {discussion.user?.profilePicture ? (
-                      <AvatarImage src={discussion.user.profilePicture} />
-                    ) : (
-                      <AvatarFallback>
-                        <UserIcon className="h-5 w-5" />
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex items-center gap-2 hover:underline cursor-pointer">
-                            <span className="font-semibold">
-                              {discussion.user?.name || "Anonim"}
-                            </span>
-                            {discussion.user?.isVerified && (
-                              <CheckCircleIcon className="h-4 w-4 text-blue-500" />
-                            )}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {discussion.user && (
-                            <>
-                              {discussion.user.username && (
-                                <DropdownMenuItem onClick={() => navigate(`/profile/${discussion.user!.username}`)}>
-                                  <UserCircleIcon className="h-4 w-4 mr-2" />
-                                  Profili Görüntüle
-                                </DropdownMenuItem>
-                              )}
-                              {!isOwner && (
-                                <DropdownMenuItem onClick={() => handleSendMessage(discussion.user!._id)}>
-                                  <MessageSquareIcon className="h-4 w-4 mr-2" />
-                                  Mesaj Gönder
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      {isOwner && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteDiscussion(discussion._id)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <span>🗑️</span>
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <p className="text-base leading-relaxed">{discussion.question}</p>
-
-                    <div className="flex items-center gap-3 pt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleLike(discussion._id, undefined)}
-                        className="gap-2"
-                      >
-                        <span>❤️</span>
-                        <span className="text-sm">{discussion.likeCount}</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setExpandedDiscussion(
-                            expandedDiscussion === discussion._id ? null : discussion._id
-                          )
-                        }
-                        className="gap-2"
-                      >
-                        <span>💬</span>
-                        <span className="text-sm">{discussion.replyCount} cevap</span>
-                      </Button>
-                    </div>
-
-                    {/* Cevaplar Bölümü */}
-                    {expandedDiscussion === discussion._id && (
-                      <div className="mt-4 space-y-4 pl-4 border-l-4 border-purple-200 dark:border-purple-800">
-                        {replies === undefined ? (
-                          <Skeleton className="h-20 w-full" />
-                        ) : replies.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Henüz cevap yok. İlk cevabı siz verin!
-                          </p>
-                        ) : (
-                          replies.map((reply) => {
-                            const isReplyOwner = currentUser && reply.user?._id === currentUser._id;
-                            
-                            return (
-                              <Card key={reply._id} className="p-4 bg-background/50">
-                                <div className="flex items-start gap-3">
-                                  <Avatar className="h-8 w-8">
-                                    {reply.user?.profilePicture ? (
-                                      <AvatarImage src={reply.user.profilePicture} />
-                                    ) : (
-                                      <AvatarFallback>
-                                        <UserIcon className="h-4 w-4" />
-                                      </AvatarFallback>
-                                    )}
-                                  </Avatar>
-                                  <div className="flex-1 space-y-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <button className="flex items-center gap-2 hover:underline cursor-pointer">
-                                            <span className="font-medium text-sm">
-                                              {reply.user?.name || "Anonim"}
-                                            </span>
-                                            {reply.user?.isVerified && (
-                                              <CheckCircleIcon className="h-3.5 w-3.5 text-blue-500" />
-                                            )}
-                                          </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                          {reply.user && (
-                                            <>
-                                              {reply.user.username && (
-                                                <DropdownMenuItem onClick={() => navigate(`/profile/${reply.user!.username}`)}>
-                                                  <UserCircleIcon className="h-4 w-4 mr-2" />
-                                                  Profili Görüntüle
-                                                </DropdownMenuItem>
-                                              )}
-                                              {!isReplyOwner && (
-                                                <DropdownMenuItem onClick={() => handleSendMessage(reply.user!._id)}>
-                                                  <MessageSquareIcon className="h-4 w-4 mr-2" />
-                                                  Mesaj Gönder
-                                                </DropdownMenuItem>
-                                              )}
-                                            </>
-                                          )}
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                      {isReplyOwner && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDeleteReply(reply._id)}
-                                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                        >
-                                          <span>🗑️</span>
-                                        </Button>
-                                      )}
-                                    </div>
-                                    <p className="text-sm">{reply.content}</p>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleToggleLike(undefined, reply._id)}
-                                      className="gap-1.5 h-7"
-                                    >
-                                      <span>❤️</span>
-                                      <span className="text-xs">{reply.likeCount}</span>
-                                    </Button>
-                                  </div>
-                                </div>
-                              </Card>
-                            );
-                          })
-                        )}
-
-                        {/* Cevap Yazma Formu */}
-                        <div className="space-y-3">
-                          <Textarea
-                            placeholder="Cevabınızı yazın..."
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            rows={3}
-                            className="resize-none"
-                          />
-                          <Button
-                            onClick={handleCreateReply}
-                            size="sm"
-                            className="w-full"
-                          >
-                            <span className="mr-2">📨</span>
-                            Cevap Gönder
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+        <TabsContent value="weather" className="space-y-4">
+          {weather ? (
+            <>
+              <Card className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      {weather.city}, {weather.country}
+                    </h2>
+                    <p className="text-muted-foreground capitalize">
+                      {weather.description}
+                    </p>
                   </div>
+                  <img
+                    src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                    alt={weather.description}
+                    className="h-20 w-20"
+                  />
+                </div>
+                
+                <div className="text-5xl font-bold mb-6">
+                  {Math.round(weather.temperature)}°C
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Cloud className="h-4 w-4" />
+                      <span className="text-sm">Hissedilen</span>
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {Math.round(weather.feelsLike)}°C
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Droplets className="h-4 w-4" />
+                      <span className="text-sm">Nem</span>
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {weather.humidity}%
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Wind className="h-4 w-4" />
+                      <span className="text-sm">Rüzgar</span>
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {weather.windSpeed} m/s
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Gauge className="h-4 w-4" />
+                      <span className="text-sm">Basınç</span>
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {weather.pressure} hPa
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Eye className="h-4 w-4" />
+                      <span className="text-sm">Görüş</span>
+                    </div>
+                    <div className="text-xl font-semibold">
+                      {(weather.visibility / 1000).toFixed(1)} km
+                    </div>
+                  </Card>
                 </div>
               </Card>
-            );
-          })
-        )}
-      </div>
+            </>
+          ) : (
+            <Card className="p-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <Cloud className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  Hava durumunu görmek için yukarıdan bir şehir arayın
+                </p>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="prayer" className="space-y-4">
+          {prayerTimes ? (
+            <Card className="p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
+                  <MapPin className="h-5 w-5" />
+                  {prayerTimes.city}, {prayerTimes.country}
+                </h2>
+                <p className="text-muted-foreground">
+                  {prayerTimes.date}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Hicri: {prayerTimes.hijriDate}
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <Card className="p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                        <SunriseIcon className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <span className="font-semibold">İmsak</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.fajr}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <Sun className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <span className="font-semibold">Güneş</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.sunrise}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-gradient-to-r from-yellow-500/10 to-amber-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <Sun className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <span className="font-semibold">Öğle</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.dhuhr}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                        <Sun className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <span className="font-semibold">İkindi</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.asr}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-gradient-to-r from-red-500/10 to-pink-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <SunsetIcon className="h-5 w-5 text-red-600" />
+                      </div>
+                      <span className="font-semibold">Akşam</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.maghrib}</span>
+                  </div>
+                </Card>
+
+                <Card className="p-4 bg-gradient-to-r from-purple-500/10 to-indigo-500/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <Cloud className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <span className="font-semibold">Yatsı</span>
+                    </div>
+                    <span className="text-2xl font-bold">{prayerTimes.timings.isha}</span>
+                  </div>
+                </Card>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <Cloud className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  Ezan vakitlerini görmek için yukarıdan bir şehir arayın
+                </p>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-export default function IslamicChatPage() {
+export default function WeatherPage() {
   return (
-    <AppLayout>
+    <>
       <Unauthenticated>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
-          <span className="text-6xl">💬</span>
-          <h2 className="text-2xl font-bold">İslami Sohbet</h2>
-          <p className="text-muted-foreground text-center max-w-md">
-            İslami sohbete katılmak için lütfen giriş yapın
-          </p>
-          <SignInButton />
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <Card className="p-8 max-w-md w-full text-center">
+            <h2 className="text-2xl font-bold mb-4">Giriş Yapın</h2>
+            <p className="text-muted-foreground mb-6">
+              Hava durumu ve ezan vakitlerini görmek için giriş yapmalısınız
+            </p>
+            <SignInButton />
+          </Card>
         </div>
       </Unauthenticated>
       <AuthLoading>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="space-y-4 w-full max-w-4xl px-4">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </div>
+        <div className="container mx-auto max-w-4xl p-4 space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </AuthLoading>
       <Authenticated>
-        <IslamicChatContent />
+        <WeatherContent />
       </Authenticated>
-    </AppLayout>
+    </>
   );
 }
